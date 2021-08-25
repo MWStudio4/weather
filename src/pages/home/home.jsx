@@ -67,11 +67,12 @@ const useStyles = makeStyles((theme) => {
 
 const Home = () => {
   const classes = useStyles();
-  const [alert, setAlert] = useState(false);
+  const [alert, setAlert] = useState('');
   const [query, setQuery] = useState('');
   const [cities, setCities] = useState([]);
   const [city, setCity] = useState([]);
   const [weathers, setWeathers] = useState([]);
+  const [openSelect, setOpenSelect] = useState(false);
 
 
   const onSearchCity = async () => {
@@ -79,6 +80,7 @@ const Home = () => {
 
     try {
       setAlert(false);
+      setOpenSelect(false);
       const {data} = await axios.get(`${baseUrl}/locations/v1/cities/search?apikey=${apiKey}&q=${query}`);
       if (data && Array.isArray(data) && data.length) {
         setCities(data.map(city => ({
@@ -86,21 +88,23 @@ const Home = () => {
           name: city.LocalizedName || city.EnglishName || 'noname',
           country: city.Country?.LocalizedName || city.Country?.EnglishName || 'nocountry'
         })));
+        setOpenSelect(true);
       } else {
         setCities([]);
+        setAlert('No data found. Change your request and repeat.')
       }
     } catch (e) {
       console.error(e)
-      setAlert(true);
+      setAlert('Error searching city!');
     }
   };
 
   const onSelectCity = async (event) => {
     try {
+      setOpenSelect(false);
       setCity(event.target.value);
       setAlert(false);
       const {data} = await axios.get(`${baseUrl}/forecasts/v1/daily/5day/${event.target.value}?apikey=${apiKey}&metric=true`);
-      console.info('Res', data);
       if (data && data.DailyForecasts && Array.isArray(data.DailyForecasts) && data.DailyForecasts.length) {
         setWeathers(data.DailyForecasts.map(item => {
           const {Temperature: tmp} = item;
@@ -114,14 +118,14 @@ const Home = () => {
       }
     } catch (e) {
       console.error(e)
-      setAlert(true);
+      setAlert('Error searching weather!');
     }
   };
 
   const WeatherForm = () => (
     <div className={classes.formContainer}>
 
-      {alert && <Alert severity="error">There was an error fetching data!</Alert>}
+      {!!alert && <Alert severity="info">{alert}</Alert>}
 
       <Box display={"flex"} justifyContent={"center"}>
         <img src="logo512.png" alt="logo" height={64}/>
@@ -130,25 +134,27 @@ const Home = () => {
         Weather App
       </Typography>
 
-      <Box className={classes.buttonHandlers}>
-        <SearchIcon/>
-        <TextField
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          fullWidth
-          variant="outlined"
-          color="primary"
-          label="City"
-          placeholder="City"
-          type="text"
-          size="small"
-          className={classes.field}
-          autoFocus
-        />
-        <Box className={classes.searchButton}>
-          <Button variant="outlined" color="default" className={classes.button} onClick={onSearchCity}>Search</Button>
+      <form onSubmit={onSearchCity}>
+        <Box className={classes.buttonHandlers}>
+          <SearchIcon/>
+          <TextField
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            fullWidth
+            variant="outlined"
+            color="primary"
+            label="City"
+            placeholder="City"
+            type="text"
+            size="small"
+            className={classes.field}
+            autoFocus
+          />
+          <Box className={classes.searchButton}>
+            <Button variant="outlined" color="default" className={classes.button} onClick={onSearchCity} type="submit">Search</Button>
+          </Box>
         </Box>
-      </Box>
+      </form>
       <FormControl variant="outlined" className={classes.formControl} fullWidth>
         <Select
           disabled={cities.length === 0}
@@ -157,6 +163,7 @@ const Home = () => {
           value={city}
           onChange={onSelectCity}
           label="Choose city"
+          open={openSelect}
         >
           {
             cities.map(item => (
