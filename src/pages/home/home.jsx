@@ -1,28 +1,25 @@
 import React, {useState} from 'react';
 import {
   Box,
-  Button,
+  Button, Card, CardContent,
   Container,
   FormControl,
   Grid,
-  InputLabel,
   makeStyles, MenuItem, Select,
   TextField,
   Typography,
 } from '@material-ui/core';
-import {Controller, useForm} from 'react-hook-form';
-import {useHistory} from 'react-router-dom';
 import axios from 'axios';
 import {apiKey, baseUrl} from '../../utils/config';
-import Hidden from '@material-ui/core/Hidden';
 import SearchIcon from '@material-ui/icons/Search';
 import Alert from '@material-ui/lab/Alert';
+import dayjs from "dayjs";
 
 const useStyles = makeStyles((theme) => {
   // console.info(`Theme`, theme);
   return ({
     root: {
-      minHeight: '90vh',
+      minHeight: '100vh',
       backgroundColor: theme.palette.background.paper,
     },
     container: {
@@ -53,42 +50,68 @@ const useStyles = makeStyles((theme) => {
     },
     logo: {
       margin: "auto"
+    },
+    weatherWrap: {},
+    weatherItemWrap: {
+      minWidth: 100,
+      minHeight: 100,
+      width: 100,
+      height: 100,
+      marginBottom: 20
+    },
+    date: {
+      marginTop: 10
     }
   });
 })
 
 const Home = () => {
-  const history = useHistory();
   const classes = useStyles();
-  const [error, setError] = useState({non_field_errors: null});
   const [alert, setAlert] = useState(false);
   const [query, setQuery] = useState('');
   const [cities, setCities] = useState([]);
   const [city, setCity] = useState([]);
+  const [weathers, setWeathers] = useState([]);
 
 
   const onSearchCity = async () => {
+    if (!query) return;
+
     try {
       setAlert(false);
-      const {data} = await axios.get(`${baseUrl}/locations/v1/cities/search?apikey=${apiKey}&q=new`);
-      console.info('Res', data);
-      setCities(data.map(city => ({})));
+      const {data} = await axios.get(`${baseUrl}/locations/v1/cities/search?apikey=${apiKey}&q=${query}`);
+      if (data && Array.isArray(data) && data.length) {
+        setCities(data.map(city => ({
+          id: city.Key,
+          name: city.LocalizedName || city.EnglishName || 'noname',
+          country: city.Country?.LocalizedName || city.Country?.EnglishName || 'nocountry'
+        })));
+      } else {
+        setCities([]);
+      }
     } catch (e) {
       console.error(e)
       setAlert(true);
     }
   };
 
-  const onSelectCity = async (city) => {
+  const onSelectCity = async (event) => {
     try {
-      console.info('City', city.target.value)
+      setCity(event.target.value);
       setAlert(false);
-      const {data} = await axios.get(`${baseUrl}/locations/v1/cities/search?apikey=${apiKey}&q=new`);
+      const {data} = await axios.get(`${baseUrl}/forecasts/v1/daily/5day/${event.target.value}?apikey=${apiKey}&metric=true`);
       console.info('Res', data);
-      setCities(data.map(city => ({
-        id: city.Key,
-        name: city.LocalizedName || city.EnglishName || 'noname'
-      })));
+      if (data && data.DailyForecasts && Array.isArray(data.DailyForecasts) && data.DailyForecasts.length) {
+        setWeathers(data.DailyForecasts.map(item => {
+          const {Temperature: tmp} = item;
+          const avgTmp = Math.ceil((tmp.Minimum?.Value + tmp.Maximum?.Value) / 2);
+          return {
+            iconNumber: item.Day?.Icon < 10 ? `0${item.Day?.Icon}` : item.Day?.Icon,
+            temp: avgTmp,
+            date: dayjs(item.Date).format('DD MMMM YYYY')
+          };
+        }));
+      }
     } catch (e) {
       console.error(e)
       setAlert(true);
@@ -96,7 +119,7 @@ const Home = () => {
   };
 
   const WeatherForm = () => (
-    <Container maxWidth="xl" className={classes.formContainer}>
+    <div className={classes.formContainer}>
 
       {alert && <Alert severity="error">There was an error fetching data!</Alert>}
 
@@ -126,46 +149,58 @@ const Home = () => {
           <Button variant="outlined" color="default" className={classes.button} onClick={onSearchCity}>Search</Button>
         </Box>
       </Box>
-      {
-        cities.length > 0 && (
-          <FormControl variant="outlined" className={classes.formControl}>
-            <InputLabel id="demo-simple-select-outlined-label">Age</InputLabel>
-            <Select
-              labelId="demo-simple-select-outlined-label"
-              id="demo-simple-select-outlined"
-              value={city}
-              onChange={onSelectCity}
-              label="Age"
-            >
-              <MenuItem value="">
-                <em>Choose city</em>
+      <FormControl variant="outlined" className={classes.formControl} fullWidth>
+        <Select
+          disabled={cities.length === 0}
+          labelId="demo-simple-select-outlined-label"
+          id="demo-simple-select-outlined"
+          value={city}
+          onChange={onSelectCity}
+          label="Choose city"
+        >
+          {
+            cities.map(item => (
+              <MenuItem key={item.id} value={item.id}>
+                {item.name}, {item.country}
               </MenuItem>
-              {
-                cities.map(item => (
-                  <MenuItem key={item.Key} value={item.Key}>Ten</MenuItem>
-                ))
-              }
-            </Select>
-          </FormControl>
-        )
-      }
-    </Container>
+            ))
+          }
+        </Select>
+      </FormControl>
+    </div>
   );
 
   return (
-    <>
-      <Hidden only={["xs"]}>
-        <Grid container direction={"column"} justifyContent={"center"} alignContent={"center"}
-              alignItems={"center"} className={classes.root}>
-          <Grid item xs={12} md={4} className={classes.container}>
-            <WeatherForm/>
+    <Container className={classes.root} maxWidth="lg">
+      <WeatherForm/>
+      {
+        weathers.length > 0 && (
+          <Grid container spacing={1} alignContent={"center"} justifyContent="space-between" alignItems={"center"}
+                className={classes.weatherWrap}>
+            {
+              weathers.map(item => (
+                <Grid item xs={12} md={2} className={classes.weatherItemWrap}>
+                  <Card className={classes.weatherItem} variant="outlined">
+                    <CardContent>
+                      <Box display="flex" justifyContent="space-between">
+                        <img src={`https://developer.accuweather.com/sites/default/files/${item.iconNumber}-s.png`}
+                             alt="item-temp"/>
+                        <Typography className={classes.temperature} align="center" variant="h2">
+                          {item.temp}°
+                        </Typography>
+                      </Box>
+                      <Typography className={classes.date} align="center">
+                        {item.date}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))
+            }
           </Grid>
-        </Grid>
-      </Hidden>
-      <Hidden only={["sm", "md", "lg", "xl"]}>
-        <WeatherForm/>
-      </Hidden>
-    </>
+        )
+      }
+    </Container>
   )
     ;
 };
