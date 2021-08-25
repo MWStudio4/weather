@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const baseUrl = process.env.REACT_APP_REST_API_URL;
+const apiKey = process.env.REACT_APP_REST_API_KEY;
 const baseHeaders = {
   Accept: 'application/json',
   'Content-Type': 'application/json',
@@ -27,5 +28,5 @@ const resultStructure = {
 };
 
 export {
-  baseUrl, baseHeaders, iosHeaders, baseAuthHeaders, resultStructure,
+  baseUrl, apiKey, baseHeaders, iosHeaders, baseAuthHeaders, resultStructure,
 };

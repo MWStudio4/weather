@@ -1,9 +1,9 @@
-import { createMuiTheme } from '@material-ui/core';
+import { createTheme } from '@material-ui/core';
 import { grey, yellow, blue } from '@material-ui/core/colors';
 import shadows from './shadows';
 import typography from './typography';
 
-const LightTheme = createMuiTheme({
+const LightTheme = createTheme({
   palette: {
     type: 'light',
     primary: blue,
@@ -14,7 +14,7 @@ const LightTheme = createMuiTheme({
   typography,
 });
 
-const OnhireTheme = createMuiTheme({
+const OnhireTheme = createTheme({
   palette: {
     type: 'light',
     primary: yellow,
@@ -25,7 +25,7 @@ const OnhireTheme = createMuiTheme({
   typography,
 });
 
-const DarkTheme = createMuiTheme({
+const DarkTheme = createTheme({
   palette: {
     type: 'dark',
     primary: yellow,
